@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tubescope</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column, 4-tab switcher under the brand bar, result cards below each tool */
+:root{--bg:#EBEFF1;--surface:#FFFFFF;--ink:#10181B;--muted:#586A71;--line:#D3DBDF;--accent:#0B7A75;--on-accent:#FFFFFF;--good:#1C8A4C;--warn:#A96A0C;--bad:#C0352D;
+--font-d:'Space Grotesk',system-ui,sans-serif;--font-b:'Inter',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1416;--surface:#162023;--ink:#E6EEF0;--muted:#91A3A8;--line:#263539;--accent:#3CC4BC;--on-accent:#06201F;--good:#4CC37C;--warn:#E0A84A;--bad:#F0716A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E1416;--surface:#162023;--ink:#E6EEF0;--muted:#91A3A8;--line:#263539;--accent:#3CC4BC;--on-accent:#06201F;--good:#4CC37C;--warn:#E0A84A;--bad:#F0716A;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.5;padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--font-d);margin:0;text-wrap:balance;line-height:1.2}
+h2{font-size:20px}h3{font-size:15px}
+p{margin:0}
+.muted{color:var(--muted)}.small{font-size:13px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-d);font-weight:700;font-size:21px}
+.mark{width:22px;height:22px;border-radius:50%;border:3px solid var(--accent);position:relative}
+.mark::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--accent)}
+.right{display:flex;align-items:center;gap:8px}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);background:var(--surface);white-space:nowrap}
+.pill.live{color:var(--good);border-color:var(--good)}
+button,input,textarea{font:inherit;color:inherit}
+.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{border:0;background:none;padding:10px 2px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;min-width:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:flex;flex-direction:column;gap:14px}
+.form{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px}
+.row>*{min-width:0}
+input,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
+textarea{resize:vertical;min-height:96px}
+label{font-size:13px;font-weight:600;display:flex;flex-direction:column;gap:5px}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:11px 18px;font-weight:600;cursor:pointer;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+.verdict{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.verdict b{font-family:var(--font-d);font-size:30px}
+.meters{display:grid;gap:12px}
+.mlabel{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:5px}
+.track{height:8px;border-radius:9px;background:var(--line);overflow:hidden}
+.track i{display:block;height:100%;border-radius:9px;background:var(--accent)}
+.track i.good{background:var(--good)}.track i.warn{background:var(--warn)}.track i.bad{background:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat b{font-family:var(--font-d);font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:99px;padding:5px 12px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+ul.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ul.list li{padding:10px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
+ul.list li:first-child{border-top:0}
+ul.list a{color:var(--ink);font-weight:500;text-decoration:none;overflow-wrap:anywhere}
+ul.list a:hover{text-decoration:underline}
+.meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chart{display:flex;align-items:flex-end;gap:4px;height:130px;position:relative;border-bottom:1px solid var(--line)}
+.chart .bar{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;opacity:.55}
+.chart .bar.hot{opacity:1}
+.chart .med{position:absolute;left:0;right:0;border-top:1px dashed var(--muted)}
+.score{display:flex;align-items:center;gap:16px}
+.checks{display:flex;flex-direction:column}
+.check{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.check:first-child{border-top:0}
+.tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:6px;height:fit-content;color:var(--bg)}
+.tag.good{background:var(--good)}.tag.warn{background:var(--warn)}.tag.bad{background:var(--bad)}
+.cmp{display:flex;flex-direction:column;gap:6px}
+.cmp .line{display:grid;grid-template-columns:minmax(70px,26%) 1fr auto;gap:8px;align-items:center;font-size:13px}
+.cmp .line span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hd{display:flex;align-items:center;gap:12px;min-width:0}
+.hd>div{min-width:0}
+.hd h2{overflow-wrap:anywhere}
+@media (prefers-reduced-motion:no-preference){.track i{transition:width .5s}}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark"></span>Tubescope</div>
+    <div class="right"><span id="modePill" class="pill">Sample data</span><button id="gear" class="ghost" type="button">Settings</button></div>
+  </header>
+
+  <section id="settings" class="card" hidden>
+    <h3>YouTube Data API key</h3>
+    <div class="row"><input id="key" type="password" placeholder="Paste your API key" autocomplete="off"><button id="saveKey" class="btn" type="button">Save</button></div>
+    <p class="note">Your key stays in this browser. Get one free in Google Cloud Console (YouTube Data API v3). Live results need this page opened from your own host. The Claude preview blocks calls to YouTube, so it shows sample data.</p>
+    <button id="clearKey" class="ghost" type="button">Remove key</button>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="keywords" type="button">Keywords</button>
+    <button role="tab" data-tab="seo" type="button">SEO score</button>
+    <button role="tab" data-tab="channel" type="button">Channel</button>
+    <button role="tab" data-tab="compare" type="button">Compare</button>
+  </nav>
+
+  <section id="keywords" class="panel">
+    <form id="kwForm" class="row"><input id="kwIn" placeholder="Search a keyword, e.g. home workout" aria-label="Keyword"><button class="btn" type="submit">Analyze</button></form>
+    <div id="kwOut" class="panel"><p class="muted">Enter a keyword to see demand, competition and related ideas from the top 25 videos.</p></div>
+  </section>
+
+  <section id="seo" class="panel">
+    <div class="card">
+      <h3>Video SEO checker</h3>
+      <div class="row"><input id="seoUrl" placeholder="Paste a video link to load it (optional)" aria-label="Video link"><button id="seoLoad" class="ghost" type="button">Load</button></div>
+      <p id="seoNote" class="note" hidden></p>
+      <div class="form">
+        <label>Target keyword<input id="seoKw"></label>
+        <label>Title<input id="seoTitle"></label>
+        <label>Description<textarea id="seoDesc"></textarea></label>
+        <label>Tags (comma separated)<input id="seoTags"></label>
+      </div>
+      <p class="small muted">Example video filled in. Replace it with yours; the score updates as you type.</p>
+    </div>
+    <div id="seoOut" class="card"></div>
+  </section>
+
+  <section id="channel" class="panel">
+    <form id="chForm" class="row"><input id="chIn" placeholder="@handle, channel link or name" aria-label="Channel"><button class="btn" type="submit">Analyze</button></form>
+    <div id="chOut" class="panel"><p class="muted">Look up any channel to see its recent video performance and upload pace.</p></div>
+  </section>
+
+  <section id="compare" class="panel">
+    <form id="cmpForm" class="row"><input id="cmpIn" placeholder="2 or 3 channels, separated by commas" aria-label="Channels to compare"><button class="btn" type="submit">Compare</button></form>
+    <div id="cmpOut" class="panel"><p class="muted">Example: @channelone, @channeltwo, @channelthree</p></div>
+  </section>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>n>=1e6?(n/1e6).toFixed(n>=1e7?0:1)+'M':n>=1e3?(n/1e3).toFixed(n>=1e4?0:1)+'K':String(Math.round(n));
+const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+const median=a=>{const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length?(s.length%2?s[m]:(s[m-1]+s[m])/2):0};
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+function rng(str){let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}let a=h;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const lvl=(v,inv)=>{const x=inv?100-v:v;return x>=65?'good':x>=40?'warn':'bad'};
+
+/* ---------- data layer: live YouTube API, sample data when no key or blocked ---------- */
+function setMode(m){const p=$('#modePill');p.textContent=m==='live'?'Live data':'Sample data';p.classList.toggle('live',m==='live')}
+async function run(liveFn,demoFn){
+  const key=store('tsKey');
+  if(key){
+    try{const data=await liveFn(key);setMode('live');return{data,note:''}}
+    catch(e){setMode('demo');const why=/failed to fetch|networkerror|load failed/i.test(e.message)?'this view cannot reach YouTube':e.message;return{data:demoFn(),note:'Live request failed ('+why+'). Showing sample data.'}}
+  }
+  setMode('demo');return{data:demoFn(),note:'Sample data. Add a YouTube API key in Settings for live results.'};
+}
+async function yt(path,p,key){
+  const r=await fetch('https://www.googleapis.com/youtube/v3/'+path+'?'+new URLSearchParams({...p,key}));
+  const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));return j;
+}
+const normVideo=(v,sm)=>({id:v.id,title:v.snippet.title,channel:v.snippet.channelTitle,subs:sm?(sm[v.snippet.channelId]||0):0,views:+v.statistics.viewCount||0,likes:+v.statistics.likeCount||0,comments:+v.statistics.commentCount||0,ageDays:Math.max(1,(Date.now()-new Date(v.snippet.publishedAt))/864e5),tags:v.snippet.tags||[],desc:v.snippet.description||''});
+
+/* ---------- keyword research ---------- */
+async function kwLive(q,key){
+  const s=await yt('search',{part:'snippet',q,type:'video',maxResults:25},key);
+  const ids=s.items.map(i=>i.id.videoId).join(',');
+  const v=await yt('videos',{part:'snippet,statistics',id:ids},key);
+  const cids=[...new Set(v.items.map(i=>i.snippet.channelId))].join(',');
+  const c=await yt('channels',{part:'statistics',id:cids},key);
+  const sm={};c.items.forEach(i=>sm[i.id]=+i.statistics.subscriberCount||0);
+  return v.items.map(i=>normVideo(i,sm));
+}
+const pool=q=>['best '+q,q+' for beginners','how to '+q,q+' tutorial','q'.replace('q',q)+' mistakes',q+' at home','q'.replace('q',q)+' 2026',q+' tips','easy '+q,q+' routine','q'.replace('q',q)+' explained','fast '+q];
+function kwDemo(q){
+  const r=rng(q.toLowerCase()),names=['Northline Studio','Daily Craft','The Practical Lab','Maple & Co','Fieldnotes TV','Quiet Mastery','Rapid Learner','Brightside Guides','Hollow Oak','Tidewater Films'];
+  const tpl=['{k} for beginners: the full guide','How I learned {k} in 30 days','{k}: 7 mistakes to avoid','The easiest way to {k}','Best {k} tips in 2026','{k} explained in 10 minutes','I tried {k} every day for a month','{k} tutorial (step by step)','Why most people fail at {k}','{k} setup you can copy today','Beginner {k} routine','{k} vs the alternatives'];
+  const p=pool(q);
+  return tpl.map((t,i)=>{const subs=Math.round(Math.pow(10,3.3+r()*3.4)),age=Math.round(8+r()*800);
+    return{id:'',title:t.replace('{k}',q),channel:names[Math.floor(r()*names.length)],subs,views:Math.round(subs*(.15+r()*2.2)*(.6+r())),likes:0,comments:0,ageDays:age,tags:[...p].sort(()=>r()-.5).slice(0,6)}});
+}
+function analyzeKw(vs,q){
+  const mv=median(vs.map(v=>v.views/v.ageDays)),ql=q.toLowerCase();
+  const demand=Math.round(clamp(Math.log10(mv+1)/3.3*100));
+  const big=vs.filter(v=>v.subs>100000).length/vs.length,exact=vs.filter(v=>v.title.toLowerCase().includes(ql)).length/vs.length;
+  const comp=Math.round(clamp((big*.6+exact*.4)*100));
+  const score=Math.round(demand*.5+(100-comp)*.5);
+  const freq={};vs.forEach(v=>v.tags.forEach(t=>{t=t.toLowerCase();if(t!==ql)freq[t]=(freq[t]||0)+1}));
+  const related=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12).map(e=>e[0]);
+  return{mv,demand,comp,score,related,avg:vs.reduce((s,v)=>s+v.views,0)/vs.length,med:median(vs.map(v=>v.views)),age:median(vs.map(v=>v.ageDays))};
+}
+const meter=(label,val,inv)=>`<div><div class="mlabel"><span>${label}</span><span>${val}/100</span></div><div class="track"><i class="${lvl(val,inv)}" style="width:${val}%"></i></div></div>`;
+async function doKeywords(q){
+  q=q.trim();if(!q)return;
+  const out=$('#kwOut');out.innerHTML='<p class="muted">Analyzing "'+esc(q)+'"…</p>';
+  const {data:vs,note}=await run(k=>kwLive(q,k),()=>kwDemo(q));
+  const a=analyzeKw(vs,q),verdict=a.score>=65?'Strong opportunity':a.score>=45?'Worth testing':'Crowded topic';
+  out.innerHTML=`${note?`<p class="note">${esc(note)}</p>`:''}
+  <div class="card"><div class="verdict"><div><span class="muted small">Keyword score</span><br><b>${a.score}</b><span class="muted"> /100</span></div><h3>${verdict}</h3></div>
+  <div class="meters">${meter('Demand',a.demand)}${meter('Competition',a.comp,true)}</div>
+  <div class="stats"><div class="stat"><b>${fmt(a.avg)}</b><span>Avg views</span></div><div class="stat"><b>${fmt(a.med)}</b><span>Median views</span></div><div class="stat"><b>${fmt(a.mv)}</b><span>Views per day</span></div><div class="stat"><b>${Math.round(a.age)}d</b><span>Median age</span></div></div></div>
+  ${a.related.length?`<div class="card"><h3>Related keywords from top video tags</h3><div class="chips">${a.related.map(t=>`<button class="chip" type="button" data-kw="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`:''}
+  <div class="card"><h3>Top ranking videos</h3><ul class="list">${vs.slice(0,10).map(v=>`<li><a href="${v.id?'https://www.youtube.com/watch?v='+esc(v.id):'https://www.youtube.com/results?search_query='+encodeURIComponent(v.title)}" target="_blank" rel="noopener">${esc(v.title)}</a><span class="meta">${esc(v.channel)} · ${fmt(v.subs)} subs · ${fmt(v.views)} views · ${fmt(v.views/v.ageDays)}/day</span></li>`).join('')}</ul></div>`;
+}
+
+/* ---------- video SEO score ---------- */
+const POWER=/\b(best|easy|fast|free|ultimate|secret|proven|simple|complete|guide|how to|why|mistakes|beginners?|tips|tutorial|review|vs)\b|\d/i;
+function seoChecks(kw,title,desc,tags){
+  kw=kw.trim().toLowerCase();const t=title.trim(),tl=t.toLowerCase(),dl=desc.toLowerCase(),tg=tags.map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const hasKw=!!kw,tIdx=hasKw?tl.indexOf(kw):-1,hashes=(desc.match(/#\w+/g)||[]).length;
+  const c=[];
+  const add=(name,w,st,tip)=>c.push({name,w,st,tip});
+  add('Title length',15,t.length>=45&&t.length<=70?1:(t.length>=30&&t.length<=80?.5:0),t.length+' characters. Aim for 45 to 70 so it is not cut off in search.');
+  add('Keyword in title',20,!hasKw?0:tIdx===-1?0:tIdx<=20?1:.5,!hasKw?'Add a target keyword first.':tIdx===-1?'Put "'+kw+'" in the title, ideally in the first few words.':tIdx<=20?'Keyword appears early in the title.':'Move the keyword closer to the start of the title.');
+  add('Keyword in first lines of description',15,!hasKw?0:dl.slice(0,150).includes(kw)?1:dl.includes(kw)?.5:0,'Mention the keyword within the first 150 characters; that is what shows in search results.');
+  add('Description length',10,desc.length>=250?1:desc.length>=120?.5:0,desc.length+' characters. Write at least 250 with context, links and a summary.');
+  add('Tag count',10,tg.length>=5&&tg.length<=15?1:tg.length>=3?.5:0,tg.length+' tags. Use 5 to 15 focused tags.');
+  add('Keyword in tags',10,!hasKw?0:tg.some(x=>x===kw)?1:tg.some(x=>x.includes(kw))?.5:0,'Include the exact keyword as one of your tags.');
+  add('Hook or number in title',5,POWER.test(t)?1:0,'Titles with a number, "how to", "best" or a clear promise tend to earn more clicks.');
+  add('Hashtags',5,hashes>=1&&hashes<=3?1:hashes>3?.5:0,hashes+' hashtags in the description. Use 1 to 3.');
+  add('Chapters',5,/(^|\n)\s*\(?\d{1,2}:\d{2}/.test(desc)?1:0,'Add timestamps like 0:00 Intro to create chapters.');
+  const caps=t&&t===t.toUpperCase()&&/[A-Z]/.test(t),ex=(t.match(/!/g)||[]).length;
+  add('Clean title formatting',5,caps?0:ex>1?.5:1,caps?'Avoid ALL CAPS titles.':ex>1?'Use at most one exclamation mark.':'No formatting problems.');
+  return c;
+}
+function ring(score){const col=score>=75?'var(--good)':score>=50?'var(--warn)':'var(--bad)',L=2*Math.PI*44;
+  return `<svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label="SEO score ${score} out of 100"><circle cx="50" cy="50" r="44" fill="none" style="stroke:var(--line)" stroke-width="8"/><circle cx="50" cy="50" r="44" fill="none" style="stroke:${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${L*score/100} ${L}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle" font-size="28" font-weight="700" style="fill:var(--ink);font-family:var(--font-d)">${score}</text></svg>`}
+function renderSeo(){
+  const c=seoChecks($('#seoKw').value,$('#seoTitle').value,$('#seoDesc').value,$('#seoTags').value.split(','));
+  const score=Math.round(c.reduce((s,x)=>s+x.w*x.st,0));
+  const lab=score>=75?'Well optimized':score>=50?'Needs work':'Weak optimization';
+  const todo=c.filter(x=>x.st<1).length;
+  $('#seoOut').innerHTML=`<div class="score">${ring(score)}<div><h2>${lab}</h2><p class="muted">${todo?todo+' thing'+(todo>1?'s':'')+' to improve':'Everything checks out'}</p></div></div>
+  <div class="checks">${[...c].sort((a,b)=>a.st-b.st).map(x=>`<div class="check"><span class="tag ${x.st===1?'good':x.st>0?'warn':'bad'}">${x.st===1?'Pass':x.st>0?'Fix':'Missing'}</span><div><b>${x.name}</b><p class="small muted">${esc(x.tip)}</p></div></div>`).join('')}</div>`;
+}
+function vidId(u){const m=u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(u.trim())?u.trim():'')}
+async function seoLoad(){
+  const id=vidId($('#seoUrl').value),n=$('#seoNote');n.hidden=false;
+  if(!id){n.textContent='Could not find a video ID in that link.';return}
+  if(!store('tsKey')){n.textContent='Add a YouTube API key in Settings to load a video. You can also type or paste the details below.';return}
+  try{const v=await yt('videos',{part:'snippet,statistics',id},store('tsKey'));if(!v.items.length)throw new Error('Video not found');const x=normVideo(v.items[0]);
+    $('#seoTitle').value=x.title;$('#seoDesc').value=x.desc;$('#seoTags').value=x.tags.join(', ');if(!$('#seoKw').value||true)$('#seoKw').value=x.tags[0]||'';
+    n.textContent='Loaded "'+x.title+'". Set your target keyword if the first tag is not it.';setMode('live');renderSeo()}
+  catch(e){n.textContent='Could not load that video ('+(/failed to fetch/i.test(e.message)?'this view cannot reach YouTube':e.message)+'). Paste the details below instead.'}
+}
+
+/* ---------- channel analytics ---------- */
+async function chResolve(q,key){
+  q=q.trim();let m=q.match(/channel\/(UC[\w-]{20,})/);if(m)return m[1];
+  if(/^UC[\w-]{20,}$/.test(q))return q;
+  m=q.match(/@[\w.\-]+/);if(m){const r=await yt('channels',{part:'id',forHandle:m[0]},key);if(r.items&&r.items[0])return r.items[0].id}
+  const s=await yt('search',{part:'snippet',q,type:'channel',maxResults:1},key);
+  if(!s.items||!s.items[0])throw new Error('Channel not found');return s.items[0].snippet.channelId;
+}
+async function chLive(q,key){
+  const id=await chResolve(q,key),c=await yt('channels',{part:'snippet,statistics,contentDetails',id},key),ch=c.items[0];
+  const p=await yt('playlistItems',{part:'contentDetails',playlistId:ch.contentDetails.relatedPlaylists.uploads,maxResults:12},key);
+  const v=await yt('videos',{part:'snippet,statistics',id:p.items.map(i=>i.contentDetails.videoId).join(',')},key);
+  return{name:ch.snippet.title,handle:ch.snippet.customUrl||'',subs:+ch.statistics.subscriberCount||0,views:+ch.statistics.viewCount||0,count:+ch.statistics.videoCount||0,videos:v.items.map(i=>normVideo(i)).sort((a,b)=>b.ageDays-a.ageDays)};
+}
+function chDemo(q){
+  const clean=q.replace(/https?:\/\/\S*?\//,'').replace(/^@/,'').trim()||'Channel',r=rng(clean.toLowerCase());
+  const subs=Math.round(Math.pow(10,3.5+r()*3.2)),base=subs*(.1+r()*.5);let age=3;const vs=[];
+  for(let i=0;i<12;i++){const views=Math.round(base*(.3+r()*1.6)*(r()<.15?3:1));vs.push({id:'',title:'Video '+(12-i)+' from '+clean,channel:clean,subs,views,likes:Math.round(views*(.02+r()*.04)),comments:Math.round(views*(.002+r()*.004)),ageDays:age,tags:[]});age+=Math.round(2+r()*9)}
+  return{name:clean,handle:'@'+clean.toLowerCase().replace(/\s+/g,''),subs,views:Math.round(subs*(40+r()*80)),count:Math.round(60+r()*400),videos:vs.reverse()};
+}
+function chStats(ch){
+  const vs=ch.videos,views=vs.map(v=>v.views),tv=views.reduce((a,b)=>a+b,0),med=median(views);
+  const span=vs.length>1?vs[0].ageDays-vs[vs.length-1].ageDays:0;
+  return{avg:tv/(vs.length||1),med,eng:tv?vs.reduce((s,v)=>s+v.likes+v.comments,0)/tv*100:0,perWeek:span?(vs.length-1)/span*7:0,best:vs.reduce((b,v)=>v.views>b.views?v:b,vs[0]||{views:0,title:''})};
+}
+function chartHtml(ch,s){
+  const vs=ch.videos,mx=Math.max(...vs.map(v=>v.views),1);
+  return `<div class="chart" role="img" aria-label="Views of the last ${vs.length} uploads">${vs.map(v=>`<div class="bar ${v.views>s.med*2?'hot':''}" style="height:${v.views/mx*100}%" title="${esc(v.title)}: ${fmt(v.views)} views"></div>`).join('')}<div class="med" style="bottom:${s.med/mx*100}%"></div></div><p class="small muted">Views on the last ${vs.length} uploads, oldest to newest. Dashed line is the median. Solid bars beat the median by 2x or more.</p>`;
+}
+const chHead=ch=>`<div class="hd"><div><h2>${esc(ch.name)}</h2><p class="muted small">${esc(ch.handle)}</p></div></div>`;
+async function doChannel(q){
+  q=q.trim();if(!q)return;const out=$('#chOut');out.innerHTML='<p class="muted">Loading channel…</p>';
+  const {data:ch,note}=await run(k=>chLive(q,k),()=>chDemo(q));const s=chStats(ch);
+  out.innerHTML=`${note?`<p class="note">${esc(note)}</p>`:''}<div class="card">${chHead(ch)}
+  <div class="stats"><div class="stat"><b>${fmt(ch.subs)}</b><span>Subscribers</span></div><div class="stat"><b>${fmt(ch.views)}</b><span>Total views</span></div><div class="stat"><b>${fmt(ch.count)}</b><span>Videos</span></div></div></div>
+  <div class="card"><h3>Recent performance</h3><div class="stats"><div class="stat"><b>${fmt(s.avg)}</b><span>Avg views</span></div><div class="stat"><b>${fmt(s.med)}</b><span>Median views</span></div><div class="stat"><b>${s.eng.toFixed(1)}%</b><span>Engagement</span></div><div class="stat"><b>${s.perWeek.toFixed(1)}</b><span>Uploads / week</span></div></div>${chartHtml(ch,s)}
+  <p class="small"><b>Best recent video:</b> ${esc(s.best.title)} (${fmt(s.best.views)} views)</p></div>`;
+}
+
+/* ---------- compare ---------- */
+async function doCompare(q){
+  const names=q.split(/[,\n]/).map(x=>x.trim()).filter(Boolean).slice(0,3);
+  if(names.length<2){$('#cmpOut').innerHTML='<p class="muted">Enter at least two channels, separated by commas.</p>';return}
+  const out=$('#cmpOut');out.innerHTML='<p class="muted">Comparing…</p>';
+  const res=await Promise.all(names.map(n=>run(k=>chLive(n,k),()=>chDemo(n)))),note=res.map(r=>r.note).find(Boolean)||'';
+  const rows=res.map(r=>({ch:r.data,s:chStats(r.data)}));
+  const metrics=[['Subscribers',x=>x.ch.subs,fmt],['Avg views (recent)',x=>x.s.avg,fmt],['Engagement',x=>x.s.eng,v=>v.toFixed(1)+'%'],['Uploads / week',x=>x.s.perWeek,v=>v.toFixed(1)]];
+  out.innerHTML=`${note?`<p class="note">${esc(note)}</p>`:''}`+metrics.map(([lab,get,f])=>{const mx=Math.max(...rows.map(get),1e-9);
+    return `<div class="card"><h3>${lab}</h3><div class="cmp">${rows.map(x=>`<div class="line"><span>${esc(x.ch.name)}</span><div class="track"><i style="width:${get(x)/mx*100}%"></i></div><b>${f(get(x))}</b></div>`).join('')}</div></div>`}).join('');
+}
+
+/* ---------- wiring ---------- */
+function go(tab){
+  if(!['keywords','seo','channel','compare'].includes(tab))tab='keywords';
+  document.querySelectorAll('.panel[id]').forEach(p=>p.hidden=p.id!==tab);
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
+  if(location.hash!=='#'+tab)location.hash=tab;
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.tab)));
+window.addEventListener('hashchange',()=>go(location.hash.slice(1)));
+$('#gear').addEventListener('click',()=>{const s=$('#settings');s.hidden=!s.hidden;$('#key').value=store('tsKey')||''});
+$('#saveKey').addEventListener('click',()=>{const v=$('#key').value.trim();store('tsKey',v||null);$('#settings').hidden=true;setMode('demo')});
+$('#clearKey').addEventListener('click',()=>{store('tsKey',null);$('#key').value='';setMode('demo')});
+$('#kwForm').addEventListener('submit',e=>{e.preventDefault();doKeywords($('#kwIn').value)});
+$('#chForm').addEventListener('submit',e=>{e.preventDefault();doChannel($('#chIn').value)});
+$('#cmpForm').addEventListener('submit',e=>{e.preventDefault();doCompare($('#cmpIn').value)});
+$('#kwOut').addEventListener('click',e=>{const b=e.target.closest('[data-kw]');if(b){$('#kwIn').value=b.dataset.kw;doKeywords(b.dataset.kw)}});
+['seoKw','seoTitle','seoDesc','seoTags'].forEach(id=>$('#'+id).addEventListener('input',renderSeo));
+$('#seoLoad').addEventListener('click',seoLoad);
+
+$('#seoKw').value='home workout';
+$('#seoTitle').value='Home Workout for Beginners: 20-Minute No-Equipment Routine';
+$('#seoDesc').value='Follow this home workout for beginners and get a full-body session done in 20 minutes with no equipment.\n\n0:00 Intro\n1:10 Warm-up\n4:30 Main circuit\n17:00 Cool-down\n\nNew to training? Start with the free plan linked below and repeat this routine three times a week.\n\n#homeworkout #beginnerfitness';
+$('#seoTags').value='home workout, no equipment workout, beginner workout, 20 minute workout, full body workout';
+$('#kwIn').value='home workout';$('#chIn').value='@fieldnotes';$('#cmpIn').value='@fieldnotes, @quietmastery, @rapidlearner';
+renderSeo();go(location.hash.slice(1));
+doKeywords('home workout');
+</script>
+</body></html>
